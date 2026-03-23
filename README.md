@@ -1,18 +1,16 @@
 
 # Product Explorer App
 
-A React Native CLI mobile app for browsing products, searching quickly, and saving favorites with a clean production-style architecture.
+A React Native CLI mobile app for browsing products, searching quickly, and saving favorites with a production-style structure.
 
-## Features
+## App Functionality
 
-- Product list with infinite scroll
-- Sticky search bar with instant local filtering
-- Debounced API search
-- Pull to refresh
-- Skeleton loading state
-- Product detail screen with favorite toggle
-- Favorites tab with AsyncStorage persistence
-- Redux Toolkit state management
+- Browse a paginated product catalog from a public API
+- Search products with instant local filtering and debounced API search
+- Open a product detail screen
+- Add and remove favorites
+- Persist favorites and product cache across app restarts
+- Refresh data when the app returns from background
 
 ## Tech Stack
 
@@ -48,15 +46,15 @@ src/
     product.ts
 ```
 
-## Setup
+## How To Run
 
 ### Prerequisites
 
 - Node.js 22+
-- Android Studio for Android builds
+- Android Studio with SDK, emulator, and NDK installed for Android
 - Xcode and CocoaPods for iOS builds on macOS
 
-### Install
+### Install Dependencies
 
 ```bash
 npm install
@@ -68,45 +66,43 @@ npm install
 npm start
 ```
 
-### Run Android
+### Run On Android
 
 ```bash
 npm run android
 ```
 
-### Run iOS
+### Run On iOS
 
 ```bash
 npx pod-install ios
 npm run ios
 ```
 
-## Architecture Notes
+## Key Technical Decisions
 
-- `productApi.ts` owns all network calls.
-- Redux keeps product pagination/search state and favorite ids.
-- Products and Favorites persist through AsyncStorage for quick offline access.
-- `App.tsx` wires the provider, navigation, persistence sync, and handles AppState lifecycle to refresh data on foreground.
-- The UI stays intentionally lean while keeping the product list performant and polished.
+- `productApi.ts` is the single place for network requests to keep API logic isolated.
+- Redux Toolkit manages product list state, pagination, search state, and favorites state.
+- AsyncStorage persists both favorites and a small product cache so the app restores content quickly after restart.
+- `App.tsx` coordinates persistence and app lifecycle handling with `AppState`.
+- Search uses a hybrid approach: instant local filtering for responsiveness, then debounced API search for fresher results.
+- `FlatList` is used for scalable rendering and infinite scroll.
 
-## Key Decisions
+## Performance Notes
 
-- Bottom tabs make the app feel like a real product instead of a demo flow.
-- The search experience is hybrid: local filtering is instant, then API results refine the list after debounce.
-- Product list data is persisted (up to 20 items) locally, allowing instant restore before the API fetch completes.
-- Favorites store ids only, reducing duplication. App lifecycle actively fetches updates on active transition.
+- `FlatList` handles large lists efficiently.
+- Search is debounced to reduce unnecessary API calls.
+- Cached product data is restored before the next network refresh to reduce perceived load time.
+- Infinite scrolling appends data instead of replacing the list for normal browse mode.
 
-## Trade-offs
+## Improvements With More Time
 
-- Product details can fetch live data if a screen opens without full product context.
-- The app avoids additional UI dependencies to keep the dependency footprint small.
+- Add reducer and API tests
+- Add image placeholders and better retry UX for network errors
+- Add richer favorites hydration for full offline favorite cards on cold start
+- Add icons and slightly more polished UI details
+- Verify and polish the iOS experience on device/simulator
 
-## Future Improvements
+## Submission Note
 
-- Add dedicated tab icons
-- Improve favorites hydration with product lookups for cold starts
-- Add unit tests for slice reducers and async thunks
-- Add image placeholders and offline-aware retry messaging
-=======
-# Educase
->>>>>>> 15bcfe1f200c50735f0cbc82acbf81a1d5130eb5
+This project is a native mobile app built with React Native CLI, so it does not have a browser deployment URL like a web app. For submission, the recommended proof is the GitHub repository plus a demo video and, if needed, an APK build.

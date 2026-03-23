@@ -105,6 +105,13 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+
+    packaging {
+        jniLibs {
+            // Avoid debug symbol stripping failures from transient temp files during local debug installs.
+            keepDebugSymbols += ["**/*.so"]
+        }
+    }
 }
 
 dependencies {
