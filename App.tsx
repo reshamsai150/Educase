@@ -15,6 +15,7 @@ import { AppDispatch, RootState, store } from './src/store/store';
 import {
   FAVORITES_STORAGE_KEY,
   PRODUCTS_STORAGE_KEY,
+  ProductsCache,
   RootStackParamList,
   RootTabParamList,
 } from './src/types/product';
@@ -77,8 +78,14 @@ function AppShell() {
     (state: RootState) => state.favorites.favoriteIds,
   );
   const products = useSelector((state: RootState) => state.products.items);
+  const page = useSelector((state: RootState) => state.products.page);
+  const hasMore = useSelector((state: RootState) => state.products.hasMore);
+  const query = useSelector((state: RootState) => state.products.query);
+  const loading = useSelector((state: RootState) => state.products.loading);
   const hydratedRef = useRef(false);
   const productsHydratedRef = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
+  const hasRefreshedAfterForeground = useRef(false);
 
   useEffect(() => {
     dispatch(loadFavorites()).finally(() => {
@@ -88,8 +95,8 @@ function AppShell() {
     AsyncStorage.getItem(PRODUCTS_STORAGE_KEY)
       .then(stored => {
         if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          const parsed = JSON.parse(stored) as ProductsCache;
+          if (Array.isArray(parsed.items) && parsed.items.length > 0) {
             dispatch(hydrateProducts(parsed));
           }
         }
@@ -101,15 +108,19 @@ function AppShell() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (!productsHydratedRef.current || products.length === 0) {
+    if (!productsHydratedRef.current || products.length === 0 || query) {
       return;
     }
 
     AsyncStorage.setItem(
       PRODUCTS_STORAGE_KEY,
-      JSON.stringify(products.slice(0, 20)),
+      JSON.stringify({
+        items: products.slice(0, 30),
+        page,
+        hasMore,
+      } satisfies ProductsCache),
     ).catch(() => { });
-  }, [products]);
+  }, [hasMore, page, products, query]);
 
   useEffect(() => {
     if (!hydratedRef.current) {
@@ -123,16 +134,46 @@ function AppShell() {
 
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      if (nextAppState === 'active') {
+      const wasInactive =
+        appStateRef.current === 'inactive' || appStateRef.current === 'background';
+
+      if (nextAppState === 'background') {
+        Promise.all([
+          AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favoriteIds)),
+          AsyncStorage.setItem(
+            PRODUCTS_STORAGE_KEY,
+            JSON.stringify({
+              items: products.slice(0, 30),
+              page,
+              hasMore,
+            } satisfies ProductsCache),
+          ),
+        ]).catch(() => { });
+      }
+
+      if (
+        wasInactive &&
+        nextAppState === 'active' &&
+        !loading &&
+        !query &&
+        !hasRefreshedAfterForeground.current
+      ) {
+        hasRefreshedAfterForeground.current = true;
         dispatch(refreshProducts());
       }
+
+      if (nextAppState !== 'active') {
+        hasRefreshedAfterForeground.current = false;
+      }
+
+      appStateRef.current = nextAppState;
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => {
       subscription.remove();
     };
-  }, [dispatch]);
+  }, [dispatch, favoriteIds, hasMore, loading, page, products, query]);
 
   return (
     <SafeAreaProvider>

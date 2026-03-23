@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { fetchProductList, searchProductList } from '../api/productApi';
-import { Product } from '../types/product';
+import { Product, ProductsCache } from '../types/product';
 
 type ProductsState = {
   items: Product[];
@@ -68,9 +68,12 @@ const productsSlice = createSlice({
       state.error = null;
     },
     resetProducts: () => initialState,
-    hydrateProducts: (state, action: PayloadAction<Product[]>) => {
+    hydrateProducts: (state, action: PayloadAction<ProductsCache>) => {
       if (state.items.length === 0 && state.page === 1 && !state.query) {
-        state.items = action.payload;
+        state.items = action.payload.items;
+        state.page = action.payload.page;
+        state.hasMore = action.payload.hasMore;
+        state.error = null;
       }
     },
   },

@@ -17,6 +17,12 @@ export interface ProductsResponse {
   limit: number;
 }
 
+export interface ProductsCache {
+  items: Product[];
+  page: number;
+  hasMore: boolean;
+}
+
 export type RootStackParamList = {
   MainTabs: undefined;
   ProductDetail: {
