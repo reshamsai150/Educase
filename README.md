@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # Product Explorer App
 
 A React Native CLI mobile app for browsing products, searching quickly, and saving favorites with a clean production-style architecture.
