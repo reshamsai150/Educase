@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Product Explorer App
 
 A React Native CLI mobile app for browsing products, searching quickly, and saving favorites with a clean production-style architecture.
@@ -106,3 +107,6 @@ npm run ios
 - Improve favorites hydration with product lookups for cold starts
 - Add unit tests for slice reducers and async thunks
 - Add image placeholders and offline-aware retry messaging
+=======
+# Educase
+>>>>>>> 15bcfe1f200c50735f0cbc82acbf81a1d5130eb5
