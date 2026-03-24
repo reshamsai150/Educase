@@ -22,8 +22,9 @@ export function searchProductList(
   page: number,
 ): Promise<ProductsResponse> {
   const skip = (page - 1) * PAGE_SIZE;
+  const normalizedQuery = query.trim().toLowerCase();
   return request<ProductsResponse>(
-    `/search?q=${encodeURIComponent(query)}&limit=${PAGE_SIZE}&skip=${skip}`,
+    `/search?q=${encodeURIComponent(normalizedQuery)}&limit=${PAGE_SIZE}&skip=${skip}`,
   );
 }
 

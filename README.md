@@ -95,6 +95,12 @@ npm run ios
 - Cached product data is restored before the next network refresh to reduce perceived load time.
 - Infinite scrolling appends data instead of replacing the list for normal browse mode.
 
+## Console Output
+
+### Metro Dev Server
+
+![Metro dev server output](assets/screenshots/Screenshot%202026-03-24%20004332.png)
+
 ## Improvements With More Time
 
 - Add reducer and API tests

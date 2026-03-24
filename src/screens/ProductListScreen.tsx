@@ -1,4 +1,10 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -15,7 +21,6 @@ import EmptyState from '../components/EmptyState';
 import Loader from '../components/Loader';
 import ProductCard from '../components/ProductCard';
 import SearchBar from '../components/SearchBar';
-import useDebounce from '../hooks/useDebounce';
 import {toggleFavorite} from '../store/favoritesSlice';
 import {
   clearError,
@@ -39,15 +44,13 @@ export default function ProductListScreen() {
     (state: RootState) => state.favorites.favoriteIds,
   );
   const [searchText, setSearchText] = useState('');
-  const debouncedSearch = useDebounce(searchText.trim(), 400);
   const browseItemsRef = useRef<Product[]>([]);
-  const lastSearchRef = useRef('');
 
   useEffect(() => {
-    if (items.length === 0) {
+    if (items.length === 0 && !query && !loading) {
       dispatch(fetchProducts(1));
     }
-  }, [dispatch, items.length]);
+  }, [dispatch, items.length, loading, query]);
 
   useEffect(() => {
     if (!query) {
@@ -55,48 +58,38 @@ export default function ProductListScreen() {
     }
   }, [items, query]);
 
-  useEffect(() => {
-    const nextQuery = debouncedSearch.trim();
-
-    if (!nextQuery) {
-      lastSearchRef.current = '';
-      if (query) {
-        dispatch(setQuery(''));
-        dispatch(refreshProducts());
-      }
-      return;
-    }
-
-    if (lastSearchRef.current === nextQuery) {
-      return;
-    }
-
-    lastSearchRef.current = nextQuery;
-    dispatch(searchProducts({query: nextQuery, page: 1}));
-  }, [debouncedSearch, dispatch, query]);
-
+  const activeSearch = searchText.trim();
+  const hasTypedSearch = searchText.trim().length > 0;
+  const browseItems =
+    browseItemsRef.current.length > 0 ? browseItemsRef.current : items;
   const localMatches = useMemo(() => {
-    const trimmed = searchText.trim().toLowerCase();
+    const normalized = activeSearch.toLowerCase();
 
-    if (!trimmed) {
-      return browseItemsRef.current;
+    if (!normalized) {
+      return browseItems;
     }
 
-    return browseItemsRef.current.filter(product =>
+    return browseItems.filter(product =>
       `${product.title} ${product.category} ${product.brand ?? ''}`
         .toLowerCase()
-        .includes(trimmed),
+        .includes(normalized),
     );
-  }, [searchText]);
-
-  const showingSearchPreview =
-    searchText.trim().length > 0 && (loading || query !== searchText.trim());
-  const restoringBrowse = !searchText.trim() && Boolean(query);
+  }, [activeSearch, browseItems]);
+  const showingRemoteSearchResults =
+    hasTypedSearch && Boolean(query) && query === activeSearch;
+  const restoringBrowse = !hasTypedSearch && Boolean(query);
   const visibleItems = restoringBrowse
-    ? browseItemsRef.current
-    : showingSearchPreview
+    ? browseItems
+    : showingRemoteSearchResults
+      ? items
+      : activeSearch
       ? localMatches
       : items;
+  const showingSearchLoader =
+    loading &&
+    query === activeSearch &&
+    hasTypedSearch &&
+    visibleItems.length === 0;
 
   const handleOpenProduct = useCallback(
     (product: Product) => {
@@ -129,41 +122,54 @@ export default function ProductListScreen() {
 
   const handleRefresh = useCallback(() => {
     dispatch(clearError());
-    if (searchText.trim()) {
-      dispatch(searchProducts({query: searchText.trim(), page: 1}));
+    if (query) {
+      dispatch(searchProducts({query, page: 1}));
       return;
     }
 
     dispatch(refreshProducts());
-  }, [dispatch, searchText]);
+  }, [dispatch, query]);
 
   const handleEndReached = useCallback(() => {
     if (loading || !hasMore) {
       return;
     }
 
-    if (searchText.trim()) {
-      dispatch(searchProducts({query: searchText.trim(), page: page + 1}));
+    if (query) {
+      dispatch(searchProducts({query, page: page + 1}));
       return;
     }
 
     dispatch(fetchProducts(page + 1));
-  }, [dispatch, hasMore, loading, page, searchText]);
+  }, [dispatch, hasMore, loading, page, query]);
 
   const handleClear = useCallback(() => {
     setSearchText('');
-  }, []);
+    dispatch(clearError());
+    if (query) {
+      dispatch(setQuery(''));
+      dispatch(refreshProducts());
+    }
+  }, [dispatch, query]);
 
-  const listHeader = useMemo(
-    () => (
-      <SearchBar
-        value={searchText}
-        onChangeText={setSearchText}
-        onClear={handleClear}
-      />
-    ),
-    [handleClear, searchText],
-  );
+  const handleSubmitSearch = useCallback(() => {
+    const nextQuery = searchText.trim();
+
+    dispatch(clearError());
+    if (!nextQuery) {
+      if (query) {
+        dispatch(setQuery(''));
+        dispatch(refreshProducts());
+      }
+      return;
+    }
+
+    dispatch(searchProducts({query: nextQuery, page: 1}));
+  }, [dispatch, query, searchText]);
+
+  const handleSearchTextChange = useCallback((value: string) => {
+    setSearchText(value);
+  }, []);
 
   const footer = useMemo(() => {
     if (!loading || visibleItems.length === 0) {
@@ -177,62 +183,63 @@ export default function ProductListScreen() {
     );
   }, [loading, visibleItems.length]);
 
-  if (loading && items.length === 0 && !searchText.trim()) {
-    return (
-      <View style={styles.screen}>
-        {listHeader}
-        <Loader />
-      </View>
-    );
-  }
-
-  if (error && items.length === 0 && !searchText.trim()) {
-    return (
-      <View style={styles.screen}>
-        {listHeader}
+  return (
+    <View style={styles.screen}>
+      <SearchBar
+        value={searchText}
+        onChangeText={handleSearchTextChange}
+        onClear={handleClear}
+        onSubmit={handleSubmitSearch}
+      />
+      {loading && items.length === 0 && !hasTypedSearch ? <Loader /> : null}
+      {error && items.length === 0 && !hasTypedSearch ? (
         <EmptyState
           title="We hit a loading snag"
           description="Try again and we will pull the latest products back in."
           actionLabel="Retry"
           onAction={handleRefresh}
         />
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.screen}>
-      <FlatList
-        data={visibleItems}
-        renderItem={renderItem}
-        keyExtractor={item => String(item.id)}
-        stickyHeaderIndices={[0]}
-        ListHeaderComponent={listHeader}
-        ListFooterComponent={footer}
-        ListEmptyComponent={
-          <EmptyState
-            title={searchText.trim() ? 'No products match yet' : 'No products yet'}
-            description={
-              searchText.trim()
-                ? 'Try a shorter phrase or clear the search to explore everything.'
-                : 'Pull to refresh or retry to bring products back.'
-            }
-            actionLabel={error ? 'Retry' : undefined}
-            onAction={error ? handleRefresh : undefined}
-          />
-        }
-        refreshControl={
-          <RefreshControl
-            refreshing={loading && !showingSearchPreview}
-            onRefresh={handleRefresh}
-            tintColor="#1F6B5C"
-          />
-        }
-        onEndReached={handleEndReached}
-        onEndReachedThreshold={0.45}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-      />
+      ) : null}
+      {!((loading && items.length === 0 && !hasTypedSearch) || (error && items.length === 0 && !hasTypedSearch)) ? (
+        <FlatList
+          data={visibleItems}
+          renderItem={renderItem}
+          keyExtractor={item => String(item.id)}
+          ListFooterComponent={footer}
+          ListEmptyComponent={
+            showingSearchLoader ? (
+              <View style={styles.searchLoaderWrap}>
+                <ActivityIndicator color="#1F6B5C" size="large" />
+                <Text style={styles.searchLoaderText}>Searching products...</Text>
+              </View>
+            ) : (
+              <EmptyState
+                title={hasTypedSearch ? 'No products found' : 'No products yet'}
+                description={
+                  hasTypedSearch
+                    ? `We could not find any products for "${searchText.trim()}". Try another search term.`
+                    : 'Pull to refresh or retry to bring products back.'
+                }
+                actionLabel={error ? 'Retry' : undefined}
+                onAction={error ? handleRefresh : undefined}
+              />
+            )
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={loading && !hasTypedSearch}
+              onRefresh={handleRefresh}
+              tintColor="#1F6B5C"
+            />
+          }
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.45}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={styles.content}
+        />
+      ) : null}
       {error && visibleItems.length > 0 ? (
         <View style={styles.inlineError}>
           <Text style={styles.inlineErrorText}>{error}</Text>
@@ -261,6 +268,19 @@ const styles = StyleSheet.create({
   },
   footerGap: {
     height: 18,
+  },
+  searchLoaderWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 48,
+    paddingHorizontal: 24,
+  },
+  searchLoaderText: {
+    marginTop: 12,
+    color: '#6F695F',
+    fontSize: 15,
+    fontWeight: '600',
   },
   inlineError: {
     position: 'absolute',

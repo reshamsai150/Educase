@@ -1,5 +1,6 @@
-import React from 'react';
+import React, {useCallback, useRef} from 'react';
 import {
+  Keyboard,
   StyleSheet,
   Text,
   TextInput,
@@ -11,30 +12,51 @@ type SearchBarProps = {
   value: string;
   onChangeText: (value: string) => void;
   onClear: () => void;
+  onSubmit?: () => void;
 };
 
 export default function SearchBar({
   value,
   onChangeText,
   onClear,
+  onSubmit,
 }: SearchBarProps) {
+  const inputRef = useRef<TextInput>(null);
+
+  const handleClear = useCallback(() => {
+    onChangeText('');
+    onClear();
+    inputRef.current?.focus();
+  }, [onChangeText, onClear]);
+
   return (
     <View style={styles.shell}>
       <View style={styles.inputWrap}>
-        <Text style={styles.icon}>Search</Text>
+        <Text style={styles.searchLabel}>Search</Text>
         <TextInput
+          ref={inputRef}
           value={value}
           onChangeText={onChangeText}
           placeholder="Search products"
           placeholderTextColor="#8A857C"
           style={styles.input}
           autoCorrect={false}
+          autoCapitalize="none"
+          selectionColor="#1F6B5C"
+          cursorColor="#1F6B5C"
           returnKeyType="search"
+          blurOnSubmit={false}
+          underlineColorAndroid="transparent"
+          onSubmitEditing={() => {
+            Keyboard.dismiss();
+            onSubmit?.();
+          }}
         />
         {value ? (
           <TouchableOpacity
-            onPress={onClear}
+            onPress={handleClear}
             style={styles.clearButton}
+            hitSlop={{top: 12, bottom: 12, left: 12, right: 12}}
             activeOpacity={0.8}>
             <Text style={styles.clearText}>X</Text>
           </TouchableOpacity>
@@ -52,21 +74,22 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   inputWrap: {
-    minHeight: 52,
+    minHeight: 56,
     borderRadius: 14,
     backgroundColor: '#FFFCF7',
+    paddingLeft: 14,
+    paddingRight: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
     shadowColor: '#7C6F5D',
     shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: {width: 0, height: 4},
     elevation: 4,
   },
-  icon: {
+  searchLabel: {
     color: '#1F6B5C',
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
     marginRight: 10,
   },
@@ -75,11 +98,13 @@ const styles = StyleSheet.create({
     color: '#1D2A24',
     fontSize: 16,
     paddingVertical: 12,
+    minHeight: 52,
   },
   clearButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    marginLeft: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#EFE7DA',
