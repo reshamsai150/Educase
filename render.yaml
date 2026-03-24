@@ -4,3 +4,6 @@ services:
     runtime: static
     buildCommand: echo Static site ready
     staticPublishPath: render-site
+    envVars:
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
