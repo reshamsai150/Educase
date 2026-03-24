@@ -2,6 +2,5 @@ services:
   - type: web
     name: product-explorer-showcase
     runtime: static
-    buildCommand: echo "Static site ready"
-    staticPublishPath: ./render-site
-    autoDeployTrigger: commit
+    buildCommand: echo Static site ready
+    staticPublishPath: render-site
